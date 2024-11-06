@@ -1,0 +1,47 @@
+services:
+  restaurant_db:
+    image: mongo
+    container_name: restaurant_db
+    ports:
+      - "27017:27017"
+    networks:
+      - back-tier
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+
+  api:
+    build: .
+    container_name: restaurant_api
+    ports:
+      - "4000:4000"
+    networks:
+      - back-tier
+    depends_on:
+      - restaurant_db
+    environment:
+      - DATABASE_URL=mongodb://restaurant_db:27017/restaurant
+      - CLIENT_TIMER=5000
+      - WAITER_TIMER=5000
+      - EATING_TIMER=5000
+      - CLIENT_ENTRY_RATIO=5
+      - NODE_ENV=development
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
+
+networks:
+  back-tier: {}
