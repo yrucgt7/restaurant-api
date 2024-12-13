@@ -40,3 +40,8 @@ a {
     color-scheme: dark;
   }
 }
+:root {
+  --table-free: #4caf50;
+  --table-waiting: #ff9800;
+  --table-attended: #2196f3;
+}

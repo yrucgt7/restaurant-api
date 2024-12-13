@@ -2,8 +2,9 @@
 
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useState } from "react";
+import { Input, Button, Box, Heading, VStack, HStack } from "@chakra-ui/react";
 
-
+// GraphQL Queries and Mutations
 const GET_MENU = gql`
   query GetMenu {
     menu {
@@ -75,15 +76,15 @@ const DELETE_ITEM = gql`
 `;
 
 export default function MenuPage() {
-  const { data, loading, error, refetch } = useQuery(GET_MENU);
-  const [createCategory] = useMutation(CREATE_CATEGORY);
-  const [updateCategory] = useMutation(UPDATE_CATEGORY);
-  const [deleteCategory] = useMutation(DELETE_CATEGORY);
-  const [createMenuItem] = useMutation(CREATE_ITEM);
-  const [updateMenuItem] = useMutation(UPDATE_ITEM);
-  const [deleteMenuItem] = useMutation(DELETE_ITEM);
+  const { data, loading, error } = useQuery(GET_MENU);
+  const [createCategory] = useMutation(CREATE_CATEGORY, { refetchQueries: [{ query: GET_MENU }] });
+  const [updateCategory] = useMutation(UPDATE_CATEGORY, { refetchQueries: [{ query: GET_MENU }] });
+  const [deleteCategory] = useMutation(DELETE_CATEGORY, { refetchQueries: [{ query: GET_MENU }] });
+  const [createMenuItem] = useMutation(CREATE_ITEM, { refetchQueries: [{ query: GET_MENU }] });
+  const [updateMenuItem] = useMutation(UPDATE_ITEM, { refetchQueries: [{ query: GET_MENU }] });
+  const [deleteMenuItem] = useMutation(DELETE_ITEM, { refetchQueries: [{ query: GET_MENU }] });
 
- 
+  // State Variables
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
@@ -94,40 +95,44 @@ export default function MenuPage() {
   const [editingItemDescription, setEditingItemDescription] = useState("");
   const [editingItemPrice, setEditingItemPrice] = useState<number | string>("");
 
-  // Handlers para categorías
+  // Handlers for Categories
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    await createCategory({ variables: { name: newCategoryName }, refetchQueries: [{ query: GET_MENU }] });
+    if (!newCategoryName.trim()) return alert("¡El nombre de la categoría no puede estar vacío!");
+    await createCategory({ variables: { name: newCategoryName } });
     setNewCategoryName("");
   };
 
   const handleEditCategory = async () => {
-    if (!editingCategoryId || !editingCategoryName.trim()) return;
-    await updateCategory({ variables: { id: editingCategoryId, name: editingCategoryName }, refetchQueries: [{ query: GET_MENU }] });
+    if (!editingCategoryId || !editingCategoryName.trim()) return alert("¡El nombre de la categoría no puede estar vacío!");
+    await updateCategory({ variables: { id: editingCategoryId, name: editingCategoryName } });
     setEditingCategoryId(null);
     setEditingCategoryName("");
   };
 
   const handleDeleteCategory = async (id: string) => {
-    await deleteCategory({ variables: { id }, refetchQueries: [{ query: GET_MENU }] });
+    if (confirm("¿Estás seguro de que deseas eliminar esta categoría?")) {
+      await deleteCategory({ variables: { id } });
+    }
   };
 
-  // Handlers para productos
+  // Handlers for Items
   const handleAddItem = async (categoryId: string) => {
-    if (!newItemDescription.trim() || !newItemPrice) return;
+    if (!newItemDescription.trim() || isNaN(Number(newItemPrice)) || Number(newItemPrice) <= 0) {
+      return alert("¡Por favor, ingresa una descripción y un precio válidos!");
+    }
     await createMenuItem({
       variables: { description: newItemDescription, price: Number(newItemPrice), categoryId },
-      refetchQueries: [{ query: GET_MENU }],
     });
     setNewItemDescription("");
     setNewItemPrice("");
   };
 
   const handleEditItem = async () => {
-    if (!editingItemId || !editingItemDescription.trim() || !editingItemPrice) return;
+    if (!editingItemId || !editingItemDescription.trim() || isNaN(Number(editingItemPrice)) || Number(editingItemPrice) <= 0) {
+      return alert("¡Por favor, ingresa una descripción y un precio válidos!");
+    }
     await updateMenuItem({
       variables: { id: editingItemId, description: editingItemDescription, price: Number(editingItemPrice) },
-      refetchQueries: [{ query: GET_MENU }],
     });
     setEditingItemId(null);
     setEditingItemDescription("");
@@ -135,98 +140,124 @@ export default function MenuPage() {
   };
 
   const handleDeleteItem = async (id: string) => {
-    await deleteMenuItem({ variables: { id }, refetchQueries: [{ query: GET_MENU }] });
+    if (confirm("¿Estás seguro de que deseas eliminar este producto?")) {
+      await deleteMenuItem({ variables: { id } });
+    }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p>Cargando...</p>;
   if (error) return <p>Error: {error.message}</p>;
 
   return (
-    <div>
-      <h1>Menu Management</h1>
+    <Box padding="20px">
+      <Heading as="h1" size="xl" marginBottom="20px">
+        Gestión del Menú
+      </Heading>
 
       {/* Crear nueva categoría */}
-      <div>
-        <input
-          type="text"
+      <VStack gap="10px" marginBottom="20px" align="flex-start">
+        <Input
+          placeholder="Nombre de la nueva categoría"
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
-          placeholder="New category name"
         />
-        <button onClick={handleAddCategory}>Add Category</button>
-      </div>
+        <Button colorScheme="teal" onClick={handleAddCategory}>
+          Añadir Categoría
+        </Button>
+      </VStack>
 
       {/* Mostrar categorías y productos */}
       {data.menu.categories.map((category: any) => (
-        <div key={category.id} style={{ margin: "20px 0", border: "1px solid #ccc", padding: "10px" }}>
-          <h3>
+        <Box key={category.id} borderWidth="1px" borderRadius="lg" padding="10px" marginBottom="20px">
+          <Heading as="h3" size="md">
             {editingCategoryId === category.id ? (
-              <>
-                <input
-                  type="text"
+              <HStack gap="10px">
+                <Input
                   value={editingCategoryName}
                   onChange={(e) => setEditingCategoryName(e.target.value)}
                 />
-                <button onClick={handleEditCategory}>Save</button>
-                <button onClick={() => setEditingCategoryId(null)}>Cancel</button>
-              </>
+                <Button colorScheme="blue" onClick={handleEditCategory}>
+                  Guardar
+                </Button>
+                <Button onClick={() => setEditingCategoryId(null)}>Cancelar</Button>
+              </HStack>
             ) : (
-              <>
-                {category.name}
-                <button onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); }}>Edit</button>
-                <button onClick={() => handleDeleteCategory(category.id)}>Delete</button>
-              </>
+              <HStack gap="10px">
+                <span>{category.name}</span>
+                <Button size="sm" onClick={() => setEditingCategoryId(category.id)}>
+                  Editar
+                </Button>
+                <Button size="sm" colorScheme="red" onClick={() => handleDeleteCategory(category.id)}>
+                  Eliminar
+                </Button>
+              </HStack>
             )}
-          </h3>
+          </Heading>
+          <Box marginY="10px" />
 
           {/* Productos */}
-          <ul>
+          <VStack align="stretch">
             {category.items.map((item: any) => (
-              <li key={item.id}>
+              <HStack key={item.id} gap="10px">
                 {editingItemId === item.id ? (
                   <>
-                    <input
-                      type="text"
+                    <Input
                       value={editingItemDescription}
                       onChange={(e) => setEditingItemDescription(e.target.value)}
                     />
-                    <input
+                    <Input
                       type="number"
                       value={editingItemPrice}
                       onChange={(e) => setEditingItemPrice(e.target.value)}
                     />
-                    <button onClick={handleEditItem}>Save</button>
-                    <button onClick={() => setEditingItemId(null)}>Cancel</button>
+                    <Button colorScheme="blue" onClick={handleEditItem}>
+                      Guardar
+                    </Button>
+                    <Button onClick={() => setEditingItemId(null)}>Cancelar</Button>
                   </>
                 ) : (
                   <>
-                    {item.description} - ${item.price}
-                    <button onClick={() => { setEditingItemId(item.id); setEditingItemDescription(item.description); setEditingItemPrice(item.price); }}>Edit</button>
-                    <button onClick={() => handleDeleteItem(item.id)}>Delete</button>
+                    <span>
+                      {item.description} - ${item.price}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingItemId(item.id);
+                        setEditingItemDescription(item.description);
+                        setEditingItemPrice(item.price);
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <Button size="sm" colorScheme="red" onClick={() => handleDeleteItem(item.id)}>
+                      Eliminar
+                    </Button>
                   </>
                 )}
-              </li>
+              </HStack>
             ))}
-          </ul>
+          </VStack>
 
           {/* Añadir nuevo producto */}
-          <div>
-            <input
-              type="text"
+          <HStack gap="10px" marginTop="10px">
+            <Input
+              placeholder="Descripción del nuevo producto"
               value={newItemDescription}
               onChange={(e) => setNewItemDescription(e.target.value)}
-              placeholder="New item description"
             />
-            <input
+            <Input
+              placeholder="Precio"
               type="number"
               value={newItemPrice}
               onChange={(e) => setNewItemPrice(e.target.value)}
-              placeholder="Price"
             />
-            <button onClick={() => handleAddItem(category.id)}>Add Item</button>
-          </div>
-        </div>
+            <Button colorScheme="teal" onClick={() => handleAddItem(category.id)}>
+              Añadir Producto
+            </Button>
+          </HStack>
+        </Box>
       ))}
-    </div>
+    </Box>
   );
 }
